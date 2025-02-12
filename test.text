@@ -1,0 +1,40 @@
+Task: Notes App with Login + JWT Authentication
+Overview
+Build a Quick Notes App where users can log in and manage their personal notes.
+• Login Required: Users must log in before accessing notes.
+
+Features
+1. Authentication
+• A login page where users enter their email and password.
+• Upon successful login:
+◦ The user is redirected to the notes dashboard.
+• If the token is missing or invalid, the user is redirected to the login page.
+2. Notes Management (CRUD)
+• Create a Note: Add a short note (max 200 characters).
+• View Notes: Display a list of the user’s saved notes.
+• Edit a Note: Modify an existing note.
+• Delete a Note: Remove a note.
+• Persist Notes: Notes are stored in an SQL database, linked to the logged-in user.
+
+Tech Stack
+• Frontend: React + MUI
+• Backend: Node.js + Express
+• Database: Any SQL DB (PostgreSQL/MySQL/MSSQL)
+• ORM: Sequelize/Prisma/TypeORM
+• Authentication: JWT for session management
+
+Implementation Details
+1. Backend (Node.js + Express)
+• Implement a login route that checks the user’s credentials.
+• Generate and return a JWT token on successful login.
+• Protect notes CRUD routes, requiring a valid token.
+2. Frontend (React + MUI)
+• Login Page:
+◦ Recommended to use MUI components
+
+• Notes UI:
+◦ MUI components to display and edit notes
+◦ MUI Snackbar for notifications.
+• Protected Routes:
+◦ Redirect unauthenticated users to the login page.
+◦ Fetch and display user notes only after authentication.
