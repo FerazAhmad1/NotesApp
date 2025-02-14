@@ -60,7 +60,7 @@ const Login = () => {
       console.log(error.response, error, "zzzzzzz");
       setSnackbar({
         isOpen: true,
-        message: error.response.data.message || "login Failed",
+        message: error.response?.data.message || "login Failed",
         type: "error",
       });
       return;
