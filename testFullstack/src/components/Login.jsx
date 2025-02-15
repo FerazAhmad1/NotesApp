@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import {
   TextField,
   Button,
@@ -6,19 +7,31 @@ import {
   Snackbar,
   Alert,
 } from "@mui/material";
-import { useRef, useState } from "react";
-import axios from "axios";
+import { useRef, useState, useEffect } from "react";
+// import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import SlideTransition from "./SlideTransition";
+import useApiHook from "./UseApiHook";
 const Login = () => {
   const emailRef = useRef();
   const passwordRef = useRef();
   const navigate = useNavigate();
+  const loginApistate = useApiHook();
   const [snackBar, setSnackbar] = useState({
     isOpen: false,
     message: "",
     type: "",
   });
+  // const makeApiRequest = (
+  //   url,
+  //   method,
+  //   headers = {},
+  //   data = {},
+  //   params = {}
+  // ) => {
+  //   const response = axios({ url, method, data, headers, params });
+  //   return response;
+  // };
 
   const loginHandler = async () => {
     try {
@@ -42,32 +55,50 @@ const Login = () => {
         return;
       }
       const body = { email, password };
-      const response = await axios.post(
-        "http://localhost:8000/api/v1/auth/login",
-        body
-      );
-      if (response.data.data.token) {
-        localStorage.setItem("token", JSON.stringify(response.data.data.token));
-        setSnackbar({
-          isOpen: true,
-          message: "login success",
-          type: "success",
-        });
-        navigate("/notes");
-        return;
-      }
+
+      await loginApistate.fetchData({
+        url: "http://localhost:8000/api/v1/auth/login",
+        method: "POST",
+        data: body,
+        params: {},
+        headers: {},
+      });
+      console.log(loginApistate.data, "yyyyyyyyy");
     } catch (error) {
-      console.log(error.response, error, "zzzzzzz");
+      console;
+    }
+
+    // Handle login logic here
+  };
+
+  useEffect(() => {
+    const { data, error } = loginApistate;
+
+    console.log(data, error);
+
+    if (error) {
+      console.log(error);
       setSnackbar({
         isOpen: true,
-        message: error.response?.data.message || "login Failed",
+        message: error.data?.message || error.message || "login Failed",
         type: "error",
       });
       return;
     }
 
-    // Handle login logic here
-  };
+    if (data) {
+      const token = JSON.stringify(data.data.token);
+      localStorage.setItem("token", token);
+      setSnackbar({
+        isOpen: true,
+        message: "login successFully",
+        type: "success",
+      });
+      navigate("/notes");
+
+      return;
+    }
+  }, [loginApistate]);
 
   return (
     <>

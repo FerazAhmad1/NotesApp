@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import AddIcon from "@mui/icons-material/Add";
-import axios from "axios";
 import SlideTransition from "./SlideTransition";
+import useApiHook from "./UseApiHook";
 import {
   Alert,
   Box,
@@ -23,6 +23,10 @@ const Notes = () => {
   const [editingId, setEditingId] = useState(null);
   const [editedNote, setEditedNote] = useState("");
   const [add, setAdd] = useState(false);
+  const getNoteApiStatus = useApiHook();
+  const updateNoteApiStatus = useApiHook();
+  const deleteNoteApiStatus = useApiHook();
+  const addNoteApiStatus = useApiHook();
 
   const [snackBar, setSnackbar] = useState({
     isOpen: false,
@@ -35,23 +39,20 @@ const Notes = () => {
     // Simulating API call with hardcoded data
     const fetchData = async () => {
       try {
-        const allNotes = await axios.get("http://localhost:8000/api/v1/notes", {
+        await getNoteApiStatus.fetchData({
+          url: "http://localhost:8000/api/v1/notes",
+          method: "GET",
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        });
-
-        setNotes(allNotes.data.data);
-        setSnackbar({
-          isOpen: true,
-          message: "get all notes successfully",
-          type: "success",
+          data: {},
+          params: {},
         });
       } catch (error) {
         console.log(error);
         setSnackbar({
           isOpen: true,
-          message: error.response.data.message || "Please login again",
+          message: error.data?.message || error.message || "Please login again",
           type: "error",
         });
         navigate("/");
@@ -61,62 +62,87 @@ const Notes = () => {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    const { data } = getNoteApiStatus;
+    if (data) {
+      setNotes(getNoteApiStatus.data.data);
+    }
+  }, [getNoteApiStatus]);
+
   const updateNote = async (id, updatedNote) => {
     try {
       // Simulated API call to update note
-      const updateresponse = await axios.patch(
-        `http://localhost:8000/api/v1/notes/${id}`,
-        { note: updatedNote },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
 
-      setNotes((prevNotes) =>
-        prevNotes.map((n) =>
-          n.id === id ? { ...n, ...updateresponse.data.data } : n
-        )
-      );
-      setEditingId(null);
-      setSnackbar({
-        isOpen: true,
-        message: "note updated successfully",
-        type: "success",
+      // const updateresponse = await axios.patch(
+      //   `http://localhost:8000/api/v1/notes/${id}`,
+      //   { note: updatedNote },
+      //   {
+      //     headers: {
+      //       Authorization: `Bearer ${token}`,
+      //     },
+      //   }
+      // );
+      await updateNoteApiStatus.fetchData({
+        url: `http://localhost:8000/api/v1/notes/${id}`,
+        data: { note: updatedNote },
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
     } catch (error) {
       setSnackbar({
         isOpen: true,
-        message: error.response.data.message || "SOMETHING WENT WRONG",
+        message: error.message || "SOMETHING WENT WRONG",
         type: "error",
       });
     }
   };
+  useEffect(() => {
+    const { data: updateresponse, error } = updateNoteApiStatus;
+
+    if (error) {
+      setSnackbar({
+        isOpen: true,
+        message: error.data?.message || error.message || "note updation fail",
+        type: "error",
+      });
+      return;
+    }
+    if (updateresponse) {
+      setNotes((prevNotes) =>
+        prevNotes.map((n) =>
+          n.id === editingId ? { ...n, ...updateresponse.data.data } : n
+        )
+      );
+
+      setSnackbar({
+        isOpen: true,
+        message: updateresponse.data.data || "note updation fail",
+        type: "success",
+      });
+    }
+  }, [updateNoteApiStatus]);
 
   const deleteNote = async (id) => {
     try {
       // Simulated API call to delete note
-      const deleteResonse = await axios.delete(
-        `http://localhost:8000/api/v1/notes/${id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      console.log(deleteResonse, deleteResonse.data.data.id);
-      setNotes((prevNotes) =>
-        prevNotes.filter((n) => {
-          console.log(n, "wwf");
-          return n.id != deleteResonse.data.data.id;
-        })
-      );
-      setSnackbar(() => ({
-        message: "deleted successfully",
-        isOpen: true,
-        type: "error",
-      }));
+      // const deleteResonse = await axios.delete(
+      //   `http://localhost:8000/api/v1/notes/${id}`,
+      //   {
+      //     headers: {
+      //       Authorization: `Bearer ${token}`,
+      //     },
+      //   }
+      // );
+
+      await deleteNoteApiStatus.fetchData({
+        url: `http://localhost:8000/api/v1/notes/${id}`,
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
     } catch (error) {
       setSnackbar(() => ({
         message: error.response.data.message || "Not deleted",
@@ -125,6 +151,32 @@ const Notes = () => {
       }));
     }
   };
+
+  useEffect(() => {
+    const { data: deleteResonse, error } = deleteNoteApiStatus;
+    if (error) {
+      setSnackbar(() => ({
+        message: error.response.data.message || "Not deleted",
+        isOpen: true,
+        type: "error",
+      }));
+      return;
+    }
+
+    if (deleteResonse) {
+      setNotes((prevNotes) =>
+        prevNotes.filter((n) => {
+          return n.id != deleteResonse.data.id;
+        })
+      );
+
+      setSnackbar(() => ({
+        message: "deleted successfully",
+        isOpen: true,
+        type: "error",
+      }));
+    }
+  }, [deleteNoteApiStatus]);
 
   const handleEdit = (id, note) => {
     setEditingId(id);
@@ -140,33 +192,55 @@ const Notes = () => {
 
   const addNote = async () => {
     try {
-      const createNote = await axios.post(
-        "http://localhost:8000/api/v1/notes",
-        { note: editedNote },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      setNotes((prevState) => [...prevState, { ...createNote.data.data }]);
-      setAdd(false);
-      setEditedNote("");
-      setSnackbar((prev) => ({
-        ...prev,
-        isOpen: true,
-        message: "added successfully",
-        type: "success",
-      }));
+      // const createNote = await axios.post(
+      //   "http://localhost:8000/api/v1/notes",
+      //   { note: editedNote },
+      //   {
+      //     headers: {
+      //       Authorization: `Bearer ${token}`,
+      //     },
+      //   }
+      // );
+      await addNoteApiStatus.fetchData({
+        url: "http://localhost:8000/api/v1/notes",
+        method: "POST",
+        data: { note: editedNote },
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
     } catch (error) {
       setSnackbar((prev) => ({
         ...prev,
         isOpen: true,
-        message: error.response.data.message || "SOMETHING WRONG",
+        message: error.message || "SOMETHING WRONG",
         type: "success",
       }));
     }
   };
+
+  useEffect(() => {
+    const { data: createNote, error } = addNoteApiStatus;
+    if (error) {
+      setSnackbar((prev) => ({
+        ...prev,
+        isOpen: true,
+        message: error.data.message || error.message || "SOMETHING WRONG",
+        type: "success",
+      }));
+      return;
+    }
+    if (createNote) {
+      setNotes((prevState) => [...prevState, { ...createNote.data }]);
+      setAdd(false);
+      setEditedNote("");
+      setSnackbar({
+        isOpen: true,
+        message: "added successfully",
+        type: "success",
+      });
+    }
+  }, [addNoteApiStatus]);
 
   return (
     <>
